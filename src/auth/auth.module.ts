@@ -8,17 +8,30 @@ import { LowercaseEmailMiddleware } from './middlewares/lowercase-email.middlewa
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt/jwt.strategy';
+import { Token, TokenSchema } from './schema/token.schema';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{
-    name: User.name,
-    schema:UserSchema
-  }]),
+    MongooseModule.forFeature([
+      {
+        name: User.name,
+        schema:UserSchema
+      },
+      {
+        name: Token.name,
+        schema: TokenSchema
+      }
+  ]),
   PassportModule,
-  JwtModule.register({
-    secret: 'your-secret-key',
-    signOptions: { expiresIn: '1h' }, 
+  JwtModule.registerAsync({
+    inject: [ConfigService],
+    useFactory: async (configService: ConfigService) => ({
+      secret: configService.get<string>('JWT_SECRET'),
+      signOptions: {
+        expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
+      },
+    }),
   }),
 ],
   controllers: [ AuthController ],

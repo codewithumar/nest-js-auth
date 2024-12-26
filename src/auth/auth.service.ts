@@ -5,38 +5,64 @@ import { Model } from 'mongoose';
 import * as  bcrypt from 'bcrypt';
 import { SignUpDTO } from './dtos/signup.dto';
 import { LoginDTO } from './dtos/login.dto';
+import { create } from 'domain';
+import { Token } from './schema/token.schema';
+import { JwtService } from '@nestjs/jwt';
+
 
 @Injectable()
 export class AuthService {
-  constructor (@InjectModel(User.name) private UserModel:Model<User>) {}
-
-
-
-  async logIn(loginData: LoginDTO) {
-    const {
-      email,
-      password
-    } = loginData;
-    
-    const user = await this.UserModel.findOne({
-      email: email
-    });
-
+  constructor (
+    @InjectModel(User.name) private UserModel:Model<User>,
+    @InjectModel(Token.name) private TokenModel:Model<Token>,
+    private readonly jwtService : JwtService,
+  ) {}
+  
+  async currentUser(token: string) {
+    const user = await this.UserModel.findOne({ email: token });
     if (!user) {
-      throw new BadRequestException('Invalid credentials');
+      throw new BadRequestException('Invalid token');
     }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new BadRequestException('Invalid credentials');
+    return user;
     }
-
-    delete user.password;
-
-    return user ;
-    
-  }
+    async logIn(loginData: LoginDTO) {
+      const { email, password } = loginData;
+      
+      const user = await this.UserModel.findOne({ email });
+      if (!user) {
+        throw new BadRequestException('Invalid credentials');
+      }
+  
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new BadRequestException('Invalid credentials');
+      }
+  
+      const payload = {
+        sub: user._id,
+        email: user.email,
+      };
+      
+      const token = this.jwtService.sign(payload);
+  
+      const expiresIn = process.env.JWT_EXPIRES_IN
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + parseInt(expiresIn));
+  
+     await this.TokenModel.create({
+        userId: user._id,
+        token,
+        expiresAt,
+      });
+  
+      const userResponse = user.toObject();
+      delete userResponse.password;
+  
+      return {
+        user: userResponse,
+        token,
+      };
+    }
   
   async signup(signupData: SignUpDTO) {
 
@@ -61,6 +87,10 @@ export class AuthService {
       password:hashPassword
     })
 
-    return UserCreated
+    return {
+      id: UserCreated._id,
+      name: UserCreated.name,
+      email: UserCreated.email,
+    }
   }
 }

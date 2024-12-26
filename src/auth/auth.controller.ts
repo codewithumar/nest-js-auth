@@ -18,11 +18,12 @@ export class AuthController {
   }
   @Post('login')
   async login(@Body() loginDto: LoginDTO) {
-    
-    const user = await this.authService.logIn(loginDto);
-    return {
-      access_token: this.jwtService.sign({...user}),
-    };
+    const response = await this.authService.logIn(loginDto);
+    return response;
+  }
+  @Post('currentUser')
+  async currentUser(@Body() token: string) {
+    return await this.authService.currentUser(token);
   }
 
 }
