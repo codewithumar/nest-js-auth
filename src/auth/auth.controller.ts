@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { SignUpDTO } from './dtos/signup.dto';
 import { LoginDTO } from './dtos/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { RefreshTokenDTO } from './dtos/refresh-token.schema';
 
 
 @Controller('auth')
@@ -20,6 +21,10 @@ export class AuthController {
   async login(@Body() loginDto: LoginDTO) {
     const response = await this.authService.logIn(loginDto);
     return response;
+  }
+  @Post('refresh')
+  async refresh(@Body() refreshTokenDTO: RefreshTokenDTO) {
+    return await this.authService.refresh(refreshTokenDTO);
   }
   @Post('currentUser')
   async currentUser(@Body() token: string) {

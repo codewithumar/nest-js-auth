@@ -5,9 +5,10 @@ import { Model } from 'mongoose';
 import * as  bcrypt from 'bcrypt';
 import { SignUpDTO } from './dtos/signup.dto';
 import { LoginDTO } from './dtos/login.dto';
-import { create } from 'domain';
 import { Token } from './schema/token.schema';
 import { JwtService } from '@nestjs/jwt';
+import { v4 as uuidv4 } from 'uuid';
+import { RefreshTokenDTO } from './dtos/refresh-token.schema';
 
 
 @Injectable()
@@ -19,12 +20,44 @@ export class AuthService {
   ) {}
   
   async currentUser(token: string) {
-    const user = await this.UserModel.findOne({ email: token });
+    const Token = await this.TokenModel.findOne({ token });
+    if (!Token.userId) {
+      throw new BadRequestException('Invalid token');
+    }
+    const user = await this.UserModel.findById(Token.userId);
     if (!user) {
       throw new BadRequestException('Invalid token');
     }
-    return user;
+    return {
+      user: user,
+      Token,
+    };
+  }
+  async refresh(refreshTokenDTO : RefreshTokenDTO) {
+    
+    const { refreshToken } = refreshTokenDTO;
+    const token = await this.TokenModel.findOne({ 
+      refreshToken:refreshToken,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!token) {
+      throw new BadRequestException('Invalid refresh token');
     }
+    const tokens = this.generateTokens(token.userId);
+    
+    await token.updateOne({
+      token: tokens.token,
+      expiresAt: tokens.expiresAt,
+      refreshToken: tokens.refreshToken,
+    });
+
+    return {
+      token: tokens.token ,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt,
+    };
+  }
+
     async logIn(loginData: LoginDTO) {
       const { email, password } = loginData;
       
@@ -38,21 +71,11 @@ export class AuthService {
         throw new BadRequestException('Invalid credentials');
       }
   
-      const payload = {
-        sub: user._id,
-        email: user.email,
-      };
-      
-      const token = this.jwtService.sign(payload);
-  
-      const expiresIn = process.env.JWT_EXPIRES_IN
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + parseInt(expiresIn));
+      const tokens = this.generateTokens(user._id);
   
      await this.TokenModel.create({
         userId: user._id,
-        token,
-        expiresAt,
+        ...tokens
       });
   
       const userResponse = user.toObject();
@@ -60,10 +83,23 @@ export class AuthService {
   
       return {
         user: userResponse,
-        token,
+        ...tokens,
       };
     }
-  
+   generateTokens(userId) {
+    
+    const token = this.jwtService.sign({userId});
+    const expiresIn = process.env.JWT_EXPIRES_IN;
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + parseInt(expiresIn));
+    const refreshToken = uuidv4();
+
+    return {
+      token : token,
+      refreshToken : refreshToken,
+      expiresAt : expiresAt,
+    };
+  }
   async signup(signupData: SignUpDTO) {
 
     const {

@@ -1,7 +1,7 @@
 import { Prop,Schema,SchemaFactory } from '@nestjs/mongoose';
 import { Document} from 'mongoose';
 
-@Schema()
+@Schema({timestamps: true})
 export class Token extends Document {
     
   @Prop({required: true})
@@ -9,6 +9,9 @@ export class Token extends Document {
 
   @Prop({ required: true })
   token: string;
+
+  @Prop({ required: true })
+  refreshToken: string;
 
   @Prop({auto: true})
   createdAt: Date;
