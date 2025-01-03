@@ -13,6 +13,8 @@ import { Token } from './schema/token.schema';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { RefreshTokenDTO } from './dtos/refresh-token.schema';
+import { plainToInstance } from 'class-transformer';
+import { UserDto } from './dtos/user.dto';
 
 @Injectable()
 export class AuthService {
@@ -34,10 +36,8 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('Invalid token');
     }
+    return plainToInstance(UserDto, user, { excludeExtraneousValues: true });
 
-    return {
-      user,
-    };
   }
 
   async refresh(refreshTokenDTO: RefreshTokenDTO) {
