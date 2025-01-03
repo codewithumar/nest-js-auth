@@ -10,38 +10,36 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt/jwt.strategy';
 import { Token, TokenSchema } from './schema/token.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtAuthGuard } from 'src/guards/auth.guard';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       {
         name: User.name,
-        schema:UserSchema
+        schema: UserSchema,
       },
       {
         name: Token.name,
-        schema: TokenSchema
-      }
-  ]),
-  PassportModule,
-  JwtModule.registerAsync({
-    inject: [ConfigService],
-    useFactory: async (configService: ConfigService) => ({
-      secret: configService.get<string>('JWT_SECRET'),
-      signOptions: {
-        expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
+        schema: TokenSchema,
       },
+    ]),
+    PassportModule,
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
+        },
+      }),
     }),
-  }),
-],
-  controllers: [ AuthController ],
-  providers: [ AuthService , JwtStrategy ],
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard],
 })
 export class AuthModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(LowercaseEmailMiddleware)
-      .forRoutes('auth/signup');
+    consumer.apply(LowercaseEmailMiddleware).forRoutes('auth/signup');
   }
-
 }

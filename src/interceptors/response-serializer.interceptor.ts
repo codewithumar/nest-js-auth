@@ -15,7 +15,7 @@ import {
           return {
             statusCode: context.switchToHttp().getResponse().statusCode,
             timestamp: new Date().toISOString(),
-            ...data,
+            data,
           };
         }),
       );

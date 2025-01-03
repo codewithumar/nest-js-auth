@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards,Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpDTO } from './dtos/signup.dto';
 import { LoginDTO } from './dtos/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshTokenDTO } from './dtos/refresh-token.schema';
+import { JwtAuthGuard } from 'src/guards/auth.guard';
 
 
 @Controller('auth')
@@ -26,9 +27,10 @@ export class AuthController {
   async refresh(@Body() refreshTokenDTO: RefreshTokenDTO) {
     return await this.authService.refresh(refreshTokenDTO);
   }
-  @Post('currentUser')
-  async currentUser(@Body() token: string) {
-    return await this.authService.currentUser(token);
+  @Get('currentUser')
+  @UseGuards(JwtAuthGuard)
+  async currentUser(@Request() req: any) {
+    return await this.authService.currentUser(req.headers.authorization);
   }
 
 }
